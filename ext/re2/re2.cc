@@ -1366,7 +1366,7 @@ extern "C" {
     rb_define_method(re2_cRegexp, "named_capturing_groups",
         RUBY_METHOD_FUNC(re2_regexp_named_capturing_groups), 0);
     rb_define_method(re2_cRegexp, "match_from",
-        RUBY_METHOD_FUNC(re2_regexp_match_from), 1);
+        RUBY_METHOD_FUNC(re2_regexp_match_from), 2);
     rb_define_method(re2_cRegexp, "match", RUBY_METHOD_FUNC(re2_regexp_match),
         -1);
     rb_define_method(re2_cRegexp, "match?",

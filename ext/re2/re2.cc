@@ -1053,6 +1053,72 @@ extern "C" {
   }
 
   /*
+   * Match the pattern against the given +text+, from the given offset, and
+   * return either a boolean (if no submatches are required) or a
+   * {RE2::MatchData} instance.
+   */
+  static VALUE re2_regexp_do_match(VALUE self, VALUE text, int offset, int number_of_matches) {
+    bool matched;
+    re2_pattern *p;
+    re2_matchdata *m;
+    VALUE matchdata;
+
+    Data_Get_Struct(self, re2_pattern, p);
+
+    if (number_of_matches < 0) {
+      number_of_matches = p->pattern->NumberOfCapturingGroups() + 1;
+    } else if (number_of_matches > 0) {
+      // Because match returns the whole match as well
+      number_of_matches++;
+    }
+
+    if (number_of_matches == 0) {
+      matched = match(p->pattern, StringValuePtr(text), 0,
+          static_cast<int>(RSTRING_LEN(text)), RE2::UNANCHORED, 0, 0);
+      return BOOL2RUBY(matched);
+    }
+
+    matchdata = rb_class_new_instance(0, 0, re2_cMatchData);
+    Data_Get_Struct(matchdata, re2_matchdata, m);
+    m->matches = new(nothrow) re2::StringPiece[number_of_matches];
+    m->regexp = self;
+    m->text = rb_str_dup(text);
+    rb_str_freeze(m->text);
+
+    if (m->matches == 0) {
+      rb_raise(rb_eNoMemError,
+               "not enough memory to allocate StringPieces for matches");
+    }
+
+    m->number_of_matches = number_of_matches;
+
+    matched = match(p->pattern, StringValuePtr(m->text), offset,
+                    /* end offset parameter may be ignored if not available in RE2 */
+                    static_cast<int>(RSTRING_LEN(m->text)),
+                    RE2::UNANCHORED, m->matches, number_of_matches);
+
+    if (matched) {
+      return matchdata;
+    } else {
+      return Qnil;
+    }
+  }
+
+  /*
+   * Match the pattern against the given +text+, starting at the given offset,
+   * and return a {RE2::MatchData} instance.
+   *
+   * @return [RE2::MatchData]
+   */
+  static VALUE re2_regexp_match_from(VALUE self, VALUE text, VALUE offset) {
+    // Convert to string
+    text = StringValue(text);
+
+    // Perform the match from the given offset
+    return re2_regexp_do_match(self, text, NUM2INT(offset), -1);
+  }
+
+  /*
    * Match the pattern against the given +text+ and return either
    * a boolean (if no submatches are required) or a {RE2::MatchData}
    * instance.
@@ -1098,56 +1164,22 @@ extern "C" {
    */
   static VALUE re2_regexp_match(int argc, VALUE *argv, VALUE self) {
     int n;
-    bool matched;
-    re2_pattern *p;
-    re2_matchdata *m;
-    VALUE text, number_of_matches, matchdata;
+    VALUE text, number_of_matches;
 
     rb_scan_args(argc, argv, "11", &text, &number_of_matches);
 
-    text = StringValue(text);
-
-    Data_Get_Struct(self, re2_pattern, p);
-
+    // Get match count requested
     if (RTEST(number_of_matches)) {
       n = NUM2INT(number_of_matches);
     } else {
-      n = p->pattern->NumberOfCapturingGroups();
+      n = -1;
     }
 
-    if (n == 0) {
-      matched = match(p->pattern, StringValuePtr(text), 0,
-          static_cast<int>(RSTRING_LEN(text)), RE2::UNANCHORED, 0, 0);
-      return BOOL2RUBY(matched);
-    } else {
+    // Convert text to string
+    text = StringValue(text);
 
-      /* Because match returns the whole match as well. */
-      n += 1;
-
-      matchdata = rb_class_new_instance(0, 0, re2_cMatchData);
-      Data_Get_Struct(matchdata, re2_matchdata, m);
-      m->matches = new(nothrow) re2::StringPiece[n];
-      m->regexp = self;
-      m->text = rb_str_dup(text);
-      rb_str_freeze(m->text);
-
-      if (m->matches == 0) {
-        rb_raise(rb_eNoMemError,
-                 "not enough memory to allocate StringPieces for matches");
-      }
-
-      m->number_of_matches = n;
-
-      matched = match(p->pattern, StringValuePtr(m->text), 0,
-                      static_cast<int>(RSTRING_LEN(m->text)),
-                      RE2::UNANCHORED, m->matches, n);
-
-      if (matched) {
-        return matchdata;
-      } else {
-        return Qnil;
-      }
-    }
+    // Perform the match, returning the requested number of matches
+    return re2_regexp_do_match(self, text, 0, n);
   }
 
   /*
@@ -1333,6 +1365,8 @@ extern "C" {
         RUBY_METHOD_FUNC(re2_regexp_number_of_capturing_groups), 0);
     rb_define_method(re2_cRegexp, "named_capturing_groups",
         RUBY_METHOD_FUNC(re2_regexp_named_capturing_groups), 0);
+    rb_define_method(re2_cRegexp, "match_from",
+        RUBY_METHOD_FUNC(re2_regexp_match_from), 1);
     rb_define_method(re2_cRegexp, "match", RUBY_METHOD_FUNC(re2_regexp_match),
         -1);
     rb_define_method(re2_cRegexp, "match?",

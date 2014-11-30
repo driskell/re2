@@ -325,6 +325,14 @@ describe RE2::Regexp do
       md = re.match_from('a woo', 3)
       md.must_equal(nil)
     end
+
+    it "returns match data for a match with multibyte sequences" do
+      re = RE2::Regexp.new('(Ruby)')
+      md = re.match_from("I ♥ Ruby", 4)
+      md.class.must_equal(RE2::MatchData)
+      md = re.match_from("I ♥ Ruby", 5)
+      md.must_equal(nil)
+    end
   end
 
   describe "#=~" do

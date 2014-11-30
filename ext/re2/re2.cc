@@ -1062,6 +1062,7 @@ extern "C" {
     re2_pattern *p;
     re2_matchdata *m;
     VALUE matchdata;
+    char *stringvalue;
 
     Data_Get_Struct(self, re2_pattern, p);
 
@@ -1092,7 +1093,8 @@ extern "C" {
 
     m->number_of_matches = number_of_matches;
 
-    matched = match(p->pattern, StringValuePtr(m->text), offset,
+    stringvalue = StringValuePtr(m->text);
+    matched = match(p->pattern, stringvalue, rb_str_offset(m->text, offset),
                     /* end offset parameter may be ignored if not available in RE2 */
                     static_cast<int>(RSTRING_LEN(m->text)),
                     RE2::UNANCHORED, m->matches, number_of_matches);

@@ -317,6 +317,16 @@ describe RE2::Regexp do
     end
   end
 
+  describe "#match_from" do
+    it "returns match data from a match starting at a given offset" do
+      re = RE2::Regexp.new('(wo{2})')
+      md = re.match_from('a woo', 2)
+      md.class.must_equal(RE2::MatchData)
+      md = re.match_from('a woo', 3)
+      md.must_equal(nil)
+    end
+  end
+
   describe "#=~" do
     it "returns only true or false if no matches are requested" do
       re = RE2::Regexp.new('My name is (\S+) (\S+)')

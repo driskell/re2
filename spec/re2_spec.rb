@@ -1,34 +1,6 @@
 require "spec_helper"
 
 describe RE2 do
-  describe "#Regexp" do
-    it "compiles an RE2 regular expression successfully" do
-      re = RE2::Regexp.new('wo{2}')
-      re.wont_equal(nil)
-      re.ok?.must_equal(true)
-    end
-
-    it "performs a match and returns a MatchData object" do
-      re = RE2::Regexp.new('(wo{2})')
-      md = re.match('a woo')
-      md.class.must_equal(RE2::MatchData)
-    end
-
-    it "returns nil if a match fails" do
-      re = RE2::Regexp.new('(wo{2})')
-      md = re.match('failure')
-      md.must_equal(nil)
-    end
-
-    it "performs a match from the given offset" do
-      re = RE2::Regexp.new('(wo{2})')
-      md = re.match_from('a woo', 2)
-      md.class.must_equal(RE2::MatchData)
-      md = re.match_from('a woo', 3)
-      md.must_equal(nil)
-    end
-  end
-
   describe "#MatchData" do
     it "returns the correct begin and end offsets for the whole match" do
       re = RE2::Regexp.new('(wo{2})')
